@@ -26,6 +26,9 @@ base mixin Dialog {
 
   _handleSend() {
     _td.onMessage(entityType: "*").listen((event) async {
+      if (event.text?.startsWith("") ?? false) {
+        return;
+      }
       if (changeMSG) {
         message = event;
         Logger().d(event);
@@ -35,10 +38,11 @@ base mixin Dialog {
       if (changeChannel) {
         var ids = event.text ?? "";
         channels = [];
+
         var idNew = ids.split("|");
         if (idNew.isNotEmpty) {
           for (var element in idNew) {
-            if (element.isNotEmpty) {
+            if (element.isNotEmpty && element.length > 4) {
               channels.add(int.parse(element));
             }
           }
@@ -97,8 +101,7 @@ base mixin Dialog {
         var chat = await _td.getChat(element);
         link.add(chat.inviteLink!);
       }
-      event.reply(
-          "Добрый день! Для получения фула, подпищитесь на этим паблики",
+      event.reply("Добрый день! Для получения фула, подпишитесь на эти паблики",
           replyMarkup: invateMarkup(link));
     });
   }
