@@ -26,6 +26,11 @@ base mixin Dialog {
 
   _handleSend() {
     _td.onMessage(entityType: "*").listen((event) async {
+      if (event.text?.startsWith("/admin-add") ?? false) {
+        admins.add(event.text!.split("/admin-add").last.replaceAll(" ", ""));
+        event.reply("Админ добавлен");
+      }
+
       if (event.text?.startsWith("") ?? false) {
         return;
       }
