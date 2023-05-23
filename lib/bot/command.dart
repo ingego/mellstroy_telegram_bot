@@ -44,6 +44,7 @@ base mixin Dialog {
           }
 
           event.reply("Каналы обновлены");
+          changeChannel = false;
         }
         if (idNew.isNotEmpty) {
           // channels = idNew;
