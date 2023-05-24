@@ -154,7 +154,6 @@ base mixin Dialog {
       var link = <String>[];
       for (var element in channels) {
         var chat = await _td.getChat(element);
-        link.add(chat.inviteLink!);
       }
       event.reply(
           r'''Приветствуем\! Для получения фулла необходимо подписаться на этот канал:''',
