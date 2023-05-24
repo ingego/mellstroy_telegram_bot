@@ -1,14 +1,32 @@
-import 'package:logger/logger.dart';
 import 'package:teledart/model.dart';
 import 'package:teledart/teledart.dart';
 
 List<int> channels = [-1001875662745, -1001737560487];
 
 List<String> admins = ["osketdev", "Dmitriy_adm"];
-TeleDartMessage? message;
+//TeleDartMessage? message;
 
 bool changeMSG = false;
 bool changeChannel = false;
+
+bool createPost = false;
+
+enum PostStyle {
+  photo,
+  video,
+  text,
+}
+
+List<MessageTemplate> messages = [];
+
+class MessageTemplate {
+  final PostStyle style;
+  final String title;
+  final String fileId;
+
+  MessageTemplate(this.style, this.title, this.fileId);
+}
+
 base mixin Dialog {
   late TeleDart _td;
   initDialog(TeleDart td) {
@@ -22,10 +40,36 @@ base mixin Dialog {
     _callAdmin();
     _handleAdminEvents();
     _handleSend();
+    _sendCommandCoCreatePost();
   }
 
+  dynamic photo;
   _handleSend() {
     _td.onMessage(entityType: "*").listen((event) async {
+      if (!admins.contains(event.chat.username.toString())) {
+        return;
+      }
+
+      if (createPost) {
+        if (textPost) {
+          _createTextPost(event);
+        }
+        if (photoPost) {
+          _createPhotoPost(event);
+        }
+        if (videoPost) {
+          _createVideoPost(event);
+        }
+        _createPost(event);
+      }
+
+      // if (event.caption?.startsWith("/send-photo") ?? false) {
+      //   photo = event.photo;
+      //   var file = await _td.getFile(event.photo!.last.fileId);
+      //   var link = file.getDownloadLink(token);
+      //   await event.replyPhoto(file.fileId, caption: "тестовое");
+      // }
+      // event.replyPhoto(photo, )
       if (event.text?.startsWith("/admin-add") ?? false) {
         admins.add(event.text!.split("/admin-add").last.replaceAll(" ", ""));
         event.reply("Админ добавлен");
@@ -34,12 +78,7 @@ base mixin Dialog {
       if (event.text?.startsWith("") ?? false) {
         return;
       }
-      if (changeMSG) {
-        message = event;
-        Logger().d(event);
-        await event.reply("Сообщение обновлено");
-        changeMSG = false;
-      }
+
       if (changeChannel) {
         var ids = event.text ?? "";
         channels = [];
@@ -62,6 +101,7 @@ base mixin Dialog {
     });
   }
 
+//так (https://i.ibb.co/HxgwYmd/image-2.png)
   eventHandler() {
     _td.onCallbackQuery().listen((event) async {
       if (event.data == null) {
@@ -72,12 +112,7 @@ base mixin Dialog {
         var res = await _checkSubscribe(event.teledartMessage!.chat.id);
         var chatId = event.teledartMessage!.chat.id;
         if (res) {
-          if (message != null) {
-            message!.forwardTo(chatId, protectContent: true);
-          } else {
-            _td.sendMessage(chatId, "Фул не загружен в бота",
-                protectContent: true);
-          }
+          await sendPostFinal(chatId, _td);
         } else {
           _td.sendMessage(chatId, "Вы не подписаны на каналы",
               protectContent: true);
@@ -106,7 +141,8 @@ base mixin Dialog {
         var chat = await _td.getChat(element);
         link.add(chat.inviteLink!);
       }
-      event.reply("Добрый день! Для получения фула, подпишитесь на эти паблики",
+      event.reply(
+          "Приветствуем! Для получения фулла необходимо подписаться на этот паблики:",
           replyMarkup: invateMarkup(link));
     });
   }
@@ -131,31 +167,31 @@ base mixin Dialog {
   _handleAdminEvents() {
     _td.onCallbackQuery().listen((event) async {
       switch (event.data ?? "") {
+        case "create_full":
+          {
+            await _td.sendMessage(
+                event.teledartMessage!.chat.id, "Создайте пост по шаблону",
+                replyMarkup: InlineKeyboardMarkup(inlineKeyboard: [
+                  [
+                    InlineKeyboardButton(
+                        text: "Текстовый пост", callbackData: "text_post"),
+                    InlineKeyboardButton(
+                        text: "Пост с фото", callbackData: "photo_post"),
+                    InlineKeyboardButton(
+                        text: "Пост с Видео", callbackData: "video_post"),
+                  ]
+                ]));
+            createPost = true;
+          }
         case "view_full":
           {
-            if (message == null) {
-              _td.sendMessage(event.teledartMessage!.chat.id, "Нет сообщения");
-            } else {
-              message!.forwardTo(event.teledartMessage!.chat.id);
-            }
+            await sendPostFinal(event.teledartMessage!.chat.id, _td);
+
             //  message.forwardTo(chatId)
           }
-        case "upload_full":
+        case "remove_full":
           {
-            if (message != null) {
-              await _td.sendMessage(
-                  event.teledartMessage!.chat.id, "Фулл уже загружен");
-            } else {
-              await _td.sendMessage(
-                  event.teledartMessage!.chat.id, "Отправьте сообщение");
-              changeMSG = true;
-            }
-          }
-        case "change_full":
-          {
-            await _td.sendMessage(event.teledartMessage!.chat.id,
-                "Отправьте сообщение, что бы изменить фул");
-            changeMSG = true;
+            messages.clear();
           }
         case "view_channel":
           {
@@ -190,7 +226,121 @@ base mixin Dialog {
       event.answer(showAlert: true);
     });
   }
+
+  void _createPost(TeleDartMessage event) {
+    // event.reply("Создайте пост по шаблону",
+    //     replyMarkup: InlineKeyboardMarkup(inlineKeyboard: [
+    //       [
+    //         InlineKeyboardButton(
+    //             text: "Текстовый пост", callbackData: "text_post"),
+    //         InlineKeyboardButton(
+    //             text: "Пост с фото", callbackData: "photo_post"),
+    //         InlineKeyboardButton(
+    //             text: "Пост с Видео", callbackData: "video_post"),
+    //       ]
+    //     ]));
+    createPost = false;
+  }
+
+  void _sendCommandCoCreatePost() {
+    _td.onCallbackQuery().listen((event) {
+      if (event.data == "text_post") {
+        textPost = true;
+        photoPost = false;
+        videoPost = false;
+        _td.sendMessage(event.teledartMessage!.chat.id, "Отправьте сообщение");
+      }
+      if (event.data == "photo_post") {
+        textPost = false;
+        photoPost = true;
+        videoPost = false;
+
+        _td.sendMessage(event.teledartMessage!.chat.id, "Отправьте сообщение");
+      }
+      if (event.data == "video_post") {
+        textPost = false;
+        photoPost = false;
+        videoPost = true;
+        _td.sendMessage(event.teledartMessage!.chat.id, "Отправьте сообщение");
+      }
+    });
+  }
+
+  void _createTextPost(TeleDartMessage event) async {
+    var type = PostStyle.text;
+    var text = (event.text ?? event.caption);
+    var msg = MessageTemplate(type, text ?? "", "");
+    if (text == null && (text?.isEmpty ?? false)) {
+      await event.reply("Ошибка, нет тела запроса");
+      return;
+    } else {
+      messages.add(msg);
+      event.reply(msg.title);
+    }
+    textPost = false;
+  }
+
+  void _createPhotoPost(TeleDartMessage event) async {
+    var type = PostStyle.photo;
+    var caption = event.caption;
+    var body = event.photo?.last;
+    var msg = MessageTemplate(type, caption ?? "", body?.fileId ?? "");
+    if (body == null) {
+      await event.reply("Ошибка, нет тела запроса");
+    } else {
+      messages.add(msg);
+      event.replyPhoto(msg.fileId, caption: msg.title);
+    }
+  }
+
+  void _createVideoPost(TeleDartMessage event) async {
+    var type = PostStyle.video;
+
+    var caption = event.caption;
+    var body = event.video;
+    var msg = MessageTemplate(type, caption ?? "", body?.fileId ?? "");
+    if (body == null) {
+      await event.reply("Ошибка, нет тела запроса");
+    } else {
+      messages.add(msg);
+      event.replyVideo(msg.fileId, caption: msg.title);
+    }
+  }
 }
+
+Future<void> sendPostFinal(int chatId, TeleDart td) async {
+  if (messages.isNotEmpty) {
+    try {
+      for (var e in messages) {
+        switch (e.style) {
+          case PostStyle.photo:
+            {
+              td.sendPhoto(chatId, e.fileId,
+                  caption: e.title, protectContent: true);
+            }
+          case PostStyle.video:
+            {
+              td.sendVideo(chatId, e.fileId,
+                  caption: e.title, protectContent: true);
+            }
+          case PostStyle.text:
+            {
+              td.sendMessage(chatId, e.title, protectContent: true);
+            }
+        }
+      }
+      //await message!.forwardTo(chatId, protectContent: true);
+    } on Exception catch (e) {
+      await td.sendMessage(chatId, e.toString());
+    }
+  } else {
+    td.sendMessage(chatId, "Фулл не загружен в бота", protectContent: true);
+  }
+}
+
+bool textPost = false;
+bool photoPost = false;
+bool videoPost = false;
 
 InlineKeyboardMarkup invateMarkup(List<String> links) {
   return InlineKeyboardMarkup(inlineKeyboard: [
@@ -207,9 +357,8 @@ InlineKeyboardMarkup adminMarkup() {
   return InlineKeyboardMarkup(inlineKeyboard: [
     [InlineKeyboardButton(text: "Мой фулл", callbackData: "view_full")],
     [
-      InlineKeyboardButton(
-          text: "«Загрузить фулл»", callbackData: "upload_full"),
-      InlineKeyboardButton(text: "Изменить фулл»", callbackData: "change_full")
+      InlineKeyboardButton(text: "Создать пост", callbackData: "create_full"),
+      InlineKeyboardButton(text: "Очистить", callbackData: "remove_full")
     ],
     [InlineKeyboardButton(text: "Каналы", callbackData: "view_channel")],
     [
