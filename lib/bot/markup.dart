@@ -2,12 +2,15 @@ import 'package:teledart/model.dart';
 
 InlineKeyboardMarkup invateMarkup(List<String> links) {
   return InlineKeyboardMarkup(inlineKeyboard: [
-    List.generate(
-      links.length,
-      (index) =>
-          InlineKeyboardButton(text: "Канал #${index + 1}", url: links[index]),
-    ),
-    [InlineKeyboardButton(text: "Проверить", callbackData: "check")]
+    // List.generate(
+    //   links.length,
+    //   (index) =>
+    //       InlineKeyboardButton(text: "Канал #${index + 1}", url: links[index]),
+    // ),
+    [
+      InlineKeyboardButton(text: "Канал", url: "https://t.me/+liiBDyWXvPZhMzQ8")
+    ],
+    [InlineKeyboardButton(text: "ПОЛУЧИТЬ ФУЛЛ", callbackData: "check")]
   ]);
 }
 

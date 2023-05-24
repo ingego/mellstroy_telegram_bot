@@ -2,7 +2,9 @@ import 'package:mellstroy_telegram_bot/bot/markup.dart';
 import 'package:teledart/model.dart';
 import 'package:teledart/teledart.dart';
 
-List<int> channels = [-1001875662745, -1001737560487];
+List<int> channels = [
+  -1001928041049,
+];
 
 List<String> admins = [
   "osketdev",
@@ -94,7 +96,9 @@ base mixin Dialog {
         var idNew = ids.split("|");
         if (idNew.isNotEmpty) {
           for (var element in idNew) {
-            if (element.isNotEmpty && element.length > 4) {
+            if (element.isNotEmpty &&
+                element.length > 4 &&
+                int.tryParse(element) != null) {
               channels.add(int.parse(element));
             }
           }
@@ -125,7 +129,7 @@ base mixin Dialog {
         if (res) {
           await sendPostFinal(chatId, _td);
         } else {
-          _td.sendMessage(chatId, "Вы не подписаны на каналы",
+          _td.sendMessage(chatId, "Вы не подписаны на канал!",
               protectContent: true);
         }
       }
@@ -153,8 +157,8 @@ base mixin Dialog {
         link.add(chat.inviteLink!);
       }
       event.reply(
-          "Приветствуем! Для получения фулла необходимо подписаться на этот паблики:",
-          replyMarkup: invateMarkup(link));
+          r'''Приветствуем\! Для получения фулла необходимо подписаться на этот канал:''',
+          replyMarkup: invateMarkup(link), parseMode: "MarkdownV2");
     });
   }
 
