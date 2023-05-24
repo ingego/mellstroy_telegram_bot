@@ -1,9 +1,15 @@
+import 'package:mellstroy_telegram_bot/bot/markup.dart';
 import 'package:teledart/model.dart';
 import 'package:teledart/teledart.dart';
 
 List<int> channels = [-1001875662745, -1001737560487];
 
-List<String> admins = ["osketdev", "Dmitriy_adm"];
+List<String> admins = [
+  "osketdev",
+  "Dmitriy_adm",
+  "kiriwwka",
+  "mellstroymoder01"
+];
 //TeleDartMessage? message;
 
 bool changeMSG = false;
@@ -47,6 +53,9 @@ base mixin Dialog {
   _handleSend() {
     _td.onMessage(entityType: "*").listen((event) async {
       if (!admins.contains(event.chat.username.toString())) {
+        if (event.text != "/start") {
+          await event.reply("Для общения с ботом, напишите /start");
+        }
         return;
       }
 
@@ -70,17 +79,16 @@ base mixin Dialog {
       //   await event.replyPhoto(file.fileId, caption: "тестовое");
       // }
       // event.replyPhoto(photo, )
+
       if (event.text?.startsWith("/admin-add") ?? false) {
         admins.add(event.text!.split("/admin-add").last.replaceAll(" ", ""));
         event.reply("Админ добавлен");
       }
-
-      if (event.text?.startsWith("") ?? false) {
-        return;
-      }
-
       if (changeChannel) {
         var ids = event.text ?? "";
+        if (ids.startsWith("/")) {
+          return;
+        }
         channels = [];
 
         var idNew = ids.split("|");
@@ -97,6 +105,9 @@ base mixin Dialog {
         if (idNew.isNotEmpty) {
           // channels = idNew;
         }
+      }
+      if (event.text?.startsWith("") ?? false) {
+        return;
       }
     });
   }
@@ -341,29 +352,3 @@ Future<void> sendPostFinal(int chatId, TeleDart td) async {
 bool textPost = false;
 bool photoPost = false;
 bool videoPost = false;
-
-InlineKeyboardMarkup invateMarkup(List<String> links) {
-  return InlineKeyboardMarkup(inlineKeyboard: [
-    List.generate(
-      links.length,
-      (index) =>
-          InlineKeyboardButton(text: "Канал #${index + 1}", url: links[index]),
-    ),
-    [InlineKeyboardButton(text: "Проверить", callbackData: "check")]
-  ]);
-}
-
-InlineKeyboardMarkup adminMarkup() {
-  return InlineKeyboardMarkup(inlineKeyboard: [
-    [InlineKeyboardButton(text: "Мой фулл", callbackData: "view_full")],
-    [
-      InlineKeyboardButton(text: "Создать пост", callbackData: "create_full"),
-      InlineKeyboardButton(text: "Очистить", callbackData: "remove_full")
-    ],
-    [InlineKeyboardButton(text: "Каналы", callbackData: "view_channel")],
-    [
-      InlineKeyboardButton(
-          text: "Загрузить каналы", callbackData: "upload_channel")
-    ],
-  ]);
-}
